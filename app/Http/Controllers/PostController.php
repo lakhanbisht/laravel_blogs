@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\BlogPost;
-use Illuminate\Http\Request;
 use App\Http\Requests\StorePost;
+use Illuminate\Http\Request;
+
+// use Illuminate\Support\Facades\DB;
 
 class PostController extends Controller
 {
@@ -15,7 +17,24 @@ class PostController extends Controller
      */
     public function index()
     {
-        return view('posts.index', ['posts' => BlogPost::all()]);
+        // DB::connection()->enableQueryLog();
+
+        // $posts = BlogPost::with('comments')->get();
+
+        // foreach ($posts as $post) {
+        //     foreach ($post->comments as $comment) {
+        //         echo $comment->content;
+        //     }
+        // }
+
+        // dd(DB::getQueryLog());
+
+        // comments_count
+
+        return view(
+            'posts.index', 
+            ['posts' => BlogPost::withCount('comments')->get()]
+        );
     }
 
     /**
@@ -27,7 +46,9 @@ class PostController extends Controller
      */
     public function show($id)
     {
-        return view('posts.show', ['post' => BlogPost::findOrFail($id)]);
+        return view('posts.show', [
+            'post' => BlogPost::with('comments')->findOrFail($id)
+        ]);
     }
 
     public function create()
@@ -40,7 +61,7 @@ class PostController extends Controller
         $validatedData = $request->validated();
         $blogPost = BlogPost::create($validatedData);
         $request->session()->flash('status', 'Blog post was created!');
-        
+
         return redirect()->route('posts.show', ['post' => $blogPost->id]);
     }
 
@@ -62,7 +83,8 @@ class PostController extends Controller
         return redirect()->route('posts.show', ['post' => $post->id]);
     }
 
-    public function destroy(Request $request, $id) {
+    public function destroy(Request $request, $id)
+    {
         $post = BlogPost::findOrFail($id);
         $post->delete();
 
