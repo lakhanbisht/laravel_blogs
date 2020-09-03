@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\BlogPost;
 use App\Http\Requests\StorePost;
+use App\Image;
 use Illuminate\Http\Request;
 use App\User;
 use Illuminate\Support\Facades\Cache;
@@ -46,7 +47,7 @@ class PostController extends Controller
         return view(
             'posts.index',
             [
-                'posts' => BlogPost::latest()->withCount('comments')->with('user')->get(),
+                'posts' => BlogPost::latest()->withCount('comments')->with('user')->with('tags')->get(),
                 'mostCommented' => $mostCommented,
                 'mostActive' => $mostActive,
                 'mostActiveLastMonth' => $mostActiveLastMonth,
@@ -69,7 +70,7 @@ class PostController extends Controller
         //     }])->findOrFail($id),
         // ]);
         $blogPost = Cache::tags(['blog-post'])->remember("blog-post-{$id}", 60, function () use ($id) {
-            return BlogPost::with('comments')->findOrFail($id);
+            return BlogPost::with('comments')->with('tags')->with('user')->findOrFail($id);
         });
 
         $sessionId = session()->getId();
@@ -124,6 +125,14 @@ class PostController extends Controller
         $validatedData = $request->validated();
         $validatedData['user_id'] = $request->user()->id;
         $blogPost = BlogPost::create($validatedData);
+
+        if ($request->hasFile('thumbnail')) {
+            $path = $request->file('thumbnail')->store('thumbnails');
+            $blogPost->image()->save(
+                Image::create(['path' => $path])
+            );
+        }
+
         $request->session()->flash('status', 'Blog post was created!');
 
         return redirect()->route('posts.show', ['post' => $blogPost->id]);
